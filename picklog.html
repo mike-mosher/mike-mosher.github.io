@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#16130f">
+<title>Pick Log</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#16130f;
+    --bg2:#1f1b15;
+    --card:#26211a;
+    --line:#3a3227;
+    --ink:#f2ece1;
+    --ink-dim:#a99e8b;
+    --rust:#c2683a;
+    --rust-soft:#7a4226;
+    --gold:#d9a441;
+    --green:#5f8a5f;
+    --green-soft:#34492f;
+    --radius:14px;
+    --tap:54px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(120% 80% at 100% 0%, #221c14 0%, transparent 55%),
+      radial-gradient(120% 80% at 0% 100%, #1b1711 0%, transparent 50%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    min-height:100vh;
+    min-height:100dvh;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .wrap{max-width:560px;margin:0 auto;padding:18px 16px 120px;}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;}
+  h1{font-family:'Fraunces',serif;font-weight:600;font-size:30px;letter-spacing:-.01em;margin:0;line-height:1;}
+  h1 .leaf{color:var(--rust);}
+  .count{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-dim);}
+  .sub{color:var(--ink-dim);font-size:13px;margin:4px 0 20px;}
+
+  .tabbar{display:flex;gap:4px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:18px;}
+  .tabbar button{flex:1;border:0;background:transparent;color:var(--ink-dim);font-family:inherit;font-size:14px;font-weight:600;padding:10px;border-radius:9px;cursor:pointer;transition:.15s;}
+  .tabbar button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 0 rgba(0,0,0,.4);}
+
+  .section{margin-bottom:22px;}
+  .lbl{display:flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:10px;}
+  .lbl .dim{color:var(--ink-dim);text-transform:none;letter-spacing:0;font-weight:400;font-size:12px;}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    font-family:inherit;font-size:14px;padding:11px 14px;border-radius:11px;cursor:pointer;
+    min-height:46px;transition:transform .08s, background .15s, border-color .15s;
+  }
+  .chip:active{transform:scale(.96);}
+  .chip.on{background:var(--rust-soft);border-color:var(--rust);color:#fff;}
+  .chip.scamp.on{background:var(--rust-soft);border-color:var(--rust);}
+
+  .zones{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .zones .chip{justify-self:stretch;text-align:center;}
+
+  .awareness{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .awareness .chip{text-align:center;line-height:1.3;}
+  .awareness .chip small{display:block;color:var(--ink-dim);font-size:11px;}
+  .awareness .chip.on small{color:#f0d9c9;}
+
+  .slider-row{display:flex;align-items:center;gap:14px;}
+  input[type=range]{flex:1;-webkit-appearance:none;height:6px;border-radius:6px;background:linear-gradient(90deg,var(--green) 0%,var(--gold) 55%,var(--rust) 100%);outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:var(--ink);border:3px solid var(--rust);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+  .urge-val{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:500;width:44px;text-align:right;color:var(--rust);}
+
+  textarea{width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;color:var(--ink);font-family:inherit;font-size:15px;padding:12px;resize:vertical;min-height:64px;}
+  textarea::placeholder{color:#6f6757;}
+
+  .savebar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent,var(--bg) 22%);}
+  .savebar .inner{max-width:560px;margin:0 auto;}
+  .save{width:100%;min-height:var(--tap);border:0;border-radius:14px;background:var(--rust);color:#fff;font-family:'Fraunces',serif;font-weight:600;font-size:18px;cursor:pointer;transition:transform .08s;}
+  .save:active{transform:scale(.98);}
+  .save.done{background:var(--green);}
+
+  /* log view */
+  .entry{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:10px;}
+  .entry .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+  .entry .when{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-dim);}
+  .entry .urge{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--rust);font-weight:500;}
+  .entry .meta{font-size:13px;color:var(--ink);margin-top:6px;line-height:1.5;}
+  .entry .tag{display:inline-block;font-size:11px;color:var(--gold);background:var(--green-soft);border-radius:6px;padding:2px 7px;margin:3px 4px 0 0;}
+  .entry .note{font-size:13px;color:var(--ink-dim);font-style:italic;margin-top:6px;}
+  .entry .del{float:right;background:none;border:0;color:var(--rust-soft);font-size:18px;cursor:pointer;padding:0 0 0 8px;}
+
+  .toolbar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .toolbar button{flex:1;min-width:120px;min-height:46px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-family:inherit;font-size:13px;font-weight:500;border-radius:11px;cursor:pointer;}
+  .toolbar button.primary{background:var(--green-soft);border-color:var(--green);color:#dfeedd;}
+
+  .empty{text-align:center;color:var(--ink-dim);padding:40px 0;font-size:14px;}
+  .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px;}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  .stat .n{font-family:'Fraunces',serif;font-size:26px;font-weight:600;}
+  .stat .k{font-size:12px;color:var(--ink-dim);margin-top:2px;}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:13px;}
+  .bar-row .name{width:78px;color:var(--ink-dim);flex-shrink:0;}
+  .bar-track{flex:1;height:18px;background:var(--bg2);border-radius:6px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--rust);border-radius:6px;}
+  .bar-row .v{font-family:'IBM Plex Mono',monospace;width:28px;text-align:right;color:var(--ink-dim);}
+  .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:9px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:50;}
+  .toast.show{opacity:1;}
+  .hint{font-size:12px;color:var(--ink-dim);margin-top:8px;line-height:1.5;}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="wrap">
+  <header>
+    <h1>Pick<span class="leaf">·</span>Log</h1>
+    <span class="count" id="hdrCount"></span>
+  </header>
+  <div class="sub">Log it the moment it happens. Profile builds itself.</div>
+
+  <div class="tabbar">
+    <button id="tabLogBtn" class="on" onclick="show('log')">Log</button>
+    <button id="tabHistBtn" onclick="show('hist')">History</button>
+    <button id="tabStatBtn" onclick="show('stat')">Profile</button>
+  </div>
+
+  <!-- LOG -->
+  <div id="view-log">
+    <div class="section">
+      <div class="lbl">Body zone</div>
+      <div class="zones" id="zones"></div>
+    </div>
+
+    <div class="section">
+      <div class="lbl">Urge / intensity <span class="dim">0 calm – 10 overwhelming</span></div>
+      <div class="slider-row">
+        <input type="range" id="urge" min="0" max="10" value="5" oninput="document.getElementById('urgeVal').textContent=this.value">
+        <span class="urge-val" id="urgeVal">5</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="lbl">Awareness</div>
+      <div class="awareness" id="awareness"></div>
+    </div>
+
+    <div class="section">
+      <div class="lbl">S · Sensory <span class="dim">what you felt / saw on the skin</span></div>
+      <div class="chips scampgroup" data-domain="sensory"></div>
+    </div>
+    <div class="section">
+      <div class="lbl">C · Cognitive <span class="dim">thoughts / beliefs</span></div>
+      <div class="chips scampgroup" data-domain="cognitive"></div>
+    </div>
+    <div class="section">
+      <div class="lbl">A · Affective <span class="dim">emotion / mood</span></div>
+      <div class="chips scampgroup" data-domain="affective"></div>
+    </div>
+    <div class="section">
+      <div class="lbl">M · Motor <span class="dim">what your hands / body were doing</span></div>
+      <div class="chips scampgroup" data-domain="motor"></div>
+    </div>
+    <div class="section">
+      <div class="lbl">P · Place <span class="dim">where you were</span></div>
+      <div class="chips scampgroup" data-domain="place"></div>
+    </div>
+
+    <div class="section">
+      <div class="lbl">Note <span class="dim">optional</span></div>
+      <textarea id="note" placeholder="Anything else (trigger, what preceded it, did you resist)..."></textarea>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="view-hist" class="hidden">
+    <div class="toolbar">
+      <button class="primary" onclick="copyForClaude()">Copy for Claude</button>
+      <button onclick="exportCSV()">Export CSV</button>
+      <button onclick="exportJSON()">Backup JSON</button>
+    </div>
+    <div class="hint">Weekly: tap “Copy for Claude”, paste into Claude, ask it for your trigger profile. CSV/JSON for your own records or a therapist.</div>
+    <div id="entries" style="margin-top:16px;"></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div id="view-stat" class="hidden">
+    <div class="stat-grid" id="statTop"></div>
+    <div class="section">
+      <div class="lbl">Domain frequency <span class="dim">how often each shows up</span></div>
+      <div id="domainBars"></div>
+    </div>
+    <div class="section">
+      <div class="lbl">Top specific triggers</div>
+      <div id="triggerBars"></div>
+    </div>
+    <div class="hint">This is a quick on-device tally. The real synthesis (clusters, what co-occurs, your dominant profile) is what Claude does well from the “Copy for Claude” export.</div>
+  </div>
+</div>
+
+<div class="savebar" id="savebar">
+  <div class="inner">
+    <button class="save" id="saveBtn" onclick="saveEntry()">Log this pick</button>
+  </div>
+</div>
+
+<script>
+/* ---------- storage shim: window.storage (Claude artifact) -> localStorage (standalone) ---------- */
+const KEY='picklog_entries_v1';
+const store={
+  async get(){
+    if(window.storage){
+      try{const r=await window.storage.get(KEY);return r&&r.value?JSON.parse(r.value):[];}catch(e){return [];}
+    }
+    try{return JSON.parse(localStorage.getItem(KEY)||'[]');}catch(e){return [];}
+  },
+  async set(arr){
+    const v=JSON.stringify(arr);
+    if(window.storage){try{await window.storage.set(KEY,v);return;}catch(e){}}
+    try{localStorage.setItem(KEY,v);}catch(e){}
+  }
+};
+
+/* ---------- option sets (own wording, SCAMP / ComB framework) ---------- */
+const ZONES=['Face','Scalp','Arms','Hands/fingers','Legs','Back/shoulders','Chest','Feet','Other'];
+const AWARENESS=[
+  {v:'automatic',t:'Automatic',s:"didn't notice starting"},
+  {v:'focused',t:'Focused',s:'deliberate, aware'}
+];
+const SCAMP={
+  sensory:['Felt rough/bumpy','Saw a blemish','Itch','Scab present','Dry/flaky','Oily','Ingrown/hair','Tension under skin'],
+  cognitive:['"Just this one"','Needs to be smooth','"I\'ll feel better after"','Perfectionism','Permission ("I deserve it")','Not thinking anything'],
+  affective:['Bored','Anxious','Stressed','Frustrated','Tired','Restless','Content/relaxed','Angry','Overwhelmed'],
+  motor:['Hands idle','On phone','At computer','Watching TV','In thought','Touching face/skin','Grooming'],
+  place:['Bathroom','Bed','Desk','Car','Couch','At a mirror','Work','Out/public']
+};
+
+let sel={zone:null,awareness:null,sensory:[],cognitive:[],affective:[],motor:[],place:[]};
+
+/* ---------- build UI ---------- */
+function buildChip(text,onTap){const b=document.createElement('button');b.className='chip';b.textContent=text;b.onclick=()=>onTap(b);return b;}
+
+function init(){
+  const z=document.getElementById('zones');
+  ZONES.forEach(name=>z.appendChild(buildChip(name,b=>{
+    [...z.children].forEach(c=>c.classList.remove('on'));
+    if(sel.zone===name){sel.zone=null;}else{sel.zone=name;b.classList.add('on');}
+  })));
+
+  const aw=document.getElementById('awareness');
+  AWARENESS.forEach(o=>{
+    const b=document.createElement('button');b.className='chip';
+    b.innerHTML=o.t+'<small>'+o.s+'</small>';
+    b.onclick=()=>{[...aw.children].forEach(c=>c.classList.remove('on'));
+      if(sel.awareness===o.v){sel.awareness=null;}else{sel.awareness=o.v;b.classList.add('on');}};
+    aw.appendChild(b);
+  });
+
+  document.querySelectorAll('.scampgroup').forEach(g=>{
+    const d=g.dataset.domain;
+    SCAMP[d].forEach(opt=>{
+      const b=buildChip(opt,btn=>{
+        const i=sel[d].indexOf(opt);
+        if(i>=0){sel[d].splice(i,1);btn.classList.remove('on');}
+        else{sel[d].push(opt);btn.classList.add('on');}
+      });
+      b.classList.add('scamp');
+      g.appendChild(b);
+    });
+  });
+  refreshCount();
+}
+
+/* ---------- save ---------- */
+async function saveEntry(){
+  const e={
+    ts:new Date().toISOString(),
+    zone:sel.zone,
+    urge:+document.getElementById('urge').value,
+    awareness:sel.awareness,
+    sensory:[...sel.sensory],cognitive:[...sel.cognitive],affective:[...sel.affective],
+    motor:[...sel.motor],place:[...sel.place],
+    note:document.getElementById('note').value.trim()
+  };
+  const all=await store.get();all.push(e);await store.set(all);
+  const btn=document.getElementById('saveBtn');btn.textContent='Logged ✓';btn.classList.add('done');
+  setTimeout(()=>{btn.textContent='Log this pick';btn.classList.remove('done');},1100);
+  resetForm();refreshCount();
+}
+function resetForm(){
+  sel={zone:null,awareness:null,sensory:[],cognitive:[],affective:[],motor:[],place:[]};
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  document.getElementById('urge').value=5;document.getElementById('urgeVal').textContent='5';
+  document.getElementById('note').value='';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+async function refreshCount(){
+  const all=await store.get();
+  const today=all.filter(e=>e.ts.slice(0,10)===new Date().toISOString().slice(0,10)).length;
+  document.getElementById('hdrCount').textContent=today+' today · '+all.length+' total';
+}
+
+/* ---------- views ---------- */
+function show(v){
+  ['log','hist','stat'].forEach(x=>{
+    document.getElementById('view-'+x).classList.toggle('hidden',x!==v);
+    document.getElementById('tab'+x.charAt(0).toUpperCase()+x.slice(1)+'Btn').classList.toggle('on',x===v);
+  });
+  document.getElementById('savebar').classList.toggle('hidden',v!=='log');
+  if(v==='hist')renderEntries();
+  if(v==='stat')renderStats();
+}
+
+const fmtWhen=ts=>{const d=new Date(ts);return d.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'})+' '+d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});};
+
+async function renderEntries(){
+  const all=(await store.get()).slice().reverse();
+  const c=document.getElementById('entries');
+  if(!all.length){c.innerHTML='<div class="empty">No entries yet.</div>';return;}
+  c.innerHTML=all.map(e=>{
+    const tags=['sensory','cognitive','affective','motor','place'].flatMap(d=>e[d]||[]).map(t=>'<span class="tag">'+esc(t)+'</span>').join('');
+    return '<div class="entry">'+
+      '<div class="top"><span class="when">'+fmtWhen(e.ts)+(e.zone?' · '+esc(e.zone):'')+(e.awareness?' · '+e.awareness:'')+'</span>'+
+      '<span class="urge">urge '+e.urge+'</span></div>'+
+      '<button class="del" onclick="del(\''+e.ts+'\')">×</button>'+
+      (tags?'<div class="meta">'+tags+'</div>':'')+
+      (e.note?'<div class="note">'+esc(e.note)+'</div>':'')+
+      '</div>';
+  }).join('');
+}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function del(ts){const all=(await store.get()).filter(e=>e.ts!==ts);await store.set(all);renderEntries();refreshCount();}
+
+async function renderStats(){
+  const all=await store.get();
+  const top=document.getElementById('statTop');
+  if(!all.length){top.innerHTML='<div class="empty" style="grid-column:1/3">No data yet.</div>';document.getElementById('domainBars').innerHTML='';document.getElementById('triggerBars').innerHTML='';return;}
+  const days=new Set(all.map(e=>e.ts.slice(0,10))).size;
+  const avgUrge=(all.reduce((s,e)=>s+e.urge,0)/all.length).toFixed(1);
+  const auto=all.filter(e=>e.awareness==='automatic').length;
+  top.innerHTML=
+    stat(all.length,'total logs')+stat((all.length/days).toFixed(1),'per day avg')+
+    stat(avgUrge,'avg urge')+stat(Math.round(100*auto/all.length)+'%','automatic');
+
+  const domains={sensory:0,cognitive:0,affective:0,motor:0,place:0};
+  const triggers={};
+  all.forEach(e=>Object.keys(domains).forEach(d=>{(e[d]||[]).forEach(t=>{domains[d]++;triggers[t]=(triggers[t]||0)+1;});}));
+  const dmax=Math.max(1,...Object.values(domains));
+  document.getElementById('domainBars').innerHTML=Object.entries(domains).map(([k,v])=>bar(k,v,dmax)).join('');
+  const tsorted=Object.entries(triggers).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const tmax=Math.max(1,...tsorted.map(t=>t[1]));
+  document.getElementById('triggerBars').innerHTML=tsorted.length?tsorted.map(([k,v])=>bar(k,v,tmax)).join(''):'<div class="hint">No triggers tagged yet.</div>';
+}
+const stat=(n,k)=>'<div class="stat"><div class="n">'+n+'</div><div class="k">'+k+'</div></div>';
+const bar=(name,v,max)=>'<div class="bar-row"><span class="name">'+esc(name)+'</span><span class="bar-track"><span class="bar-fill" style="width:'+Math.round(100*v/max)+'%"></span></span><span class="v">'+v+'</span></div>';
+
+/* ---------- export ---------- */
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600);}
+async function copyForClaude(){
+  const all=await store.get();
+  if(!all.length){toast('No entries yet');return;}
+  let out="Skin-picking self-monitoring log (SCAMP / ComB framework). Each entry is one picking episode. Analyze for my trigger profile: which SCAMP domains dominate, which specific triggers and contexts recur, what co-occurs, and the difference between my automatic and focused episodes. End with the 3-4 highest-leverage intervention targets.\n\n";
+  all.forEach((e,i)=>{
+    out+=(i+1)+'. '+fmtWhen(e.ts)+' | zone: '+(e.zone||'-')+' | urge '+e.urge+'/10 | '+(e.awareness||'-')+'\n';
+    ['sensory','cognitive','affective','motor','place'].forEach(d=>{if((e[d]||[]).length)out+='   '+d+': '+e[d].join(', ')+'\n';});
+    if(e.note)out+='   note: '+e.note+'\n';
+  });
+  copy(out);
+}
+function exportCSV(){
+  store.get().then(all=>{
+    if(!all.length){toast('No entries yet');return;}
+    const cols=['ts','zone','urge','awareness','sensory','cognitive','affective','motor','place','note'];
+    const esc=v=>{v=Array.isArray(v)?v.join('; '):(v==null?'':String(v));return '"'+v.replace(/"/g,'""')+'"';};
+    const csv=[cols.join(',')].concat(all.map(e=>cols.map(c=>esc(e[c])).join(','))).join('\n');
+    download('picklog-'+new Date().toISOString().slice(0,10)+'.csv',csv,'text/csv');
+  });
+}
+function exportJSON(){store.get().then(all=>{if(!all.length){toast('No entries yet');return;}download('picklog-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(all,null,2),'application/json');});}
+function copy(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(()=>toast('Copied to clipboard'),()=>fallbackCopy(text));}
+  else fallbackCopy(text);
+}
+function fallbackCopy(text){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();try{document.execCommand('copy');toast('Copied');}catch(e){toast('Copy failed');}t.remove();}
+function download(name,data,type){const b=new Blob([data],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);toast('Exported '+name);}
+
+init();
+</script>
+</body>
+</html>
