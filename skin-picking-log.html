@@ -126,7 +126,7 @@
     <h1>Pick<span class="leaf">·</span>Log</h1>
     <span class="count" id="hdrCount"></span>
   </header>
-  <div class="sub">Log it the moment it happens. Profile builds itself.</div>
+  <div class="sub">Log it the moment it happens. Profile builds itself. <span id="verBadge" style="opacity:.5;font-family:'IBM Plex Mono',monospace;font-size:11px;"></span></div>
 
   <div class="tabbar">
     <button id="tabLogBtn" class="on" onclick="show('log')">Log</button>
@@ -193,6 +193,8 @@
       <button class="primary" onclick="copyForClaude()">Copy for Claude</button>
       <button onclick="exportCSV()">Export CSV</button>
       <button onclick="exportJSON()">Backup JSON</button>
+      <button onclick="document.getElementById('importFile').click()">Import JSON</button>
+      <input type="file" id="importFile" accept="application/json,.json" class="hidden" onchange="importJSON(event)">
     </div>
     <div class="hint">Weekly: tap “Copy for Claude”, paste into Claude, ask it for your trigger profile. CSV/JSON for your own records or a therapist.</div>
     <div id="entries" style="margin-top:16px;"></div>
@@ -472,6 +474,24 @@ function exportCSV(){
   });
 }
 function exportJSON(){store.get().then(all=>{if(!all.length){toast('No entries yet');return;}download('picklog-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(all,null,2),'application/json');});}
+async function importJSON(ev){
+  const f=ev.target.files&&ev.target.files[0];
+  if(!f){return;}
+  try{
+    const incoming=JSON.parse(await f.text());
+    if(!Array.isArray(incoming))throw new Error('not an array');
+    const cur=await store.get();
+    const byTs={};
+    cur.forEach(e=>{if(e&&e.ts)byTs[e.ts]=e;});
+    let added=0;
+    incoming.forEach(e=>{if(e&&e.ts){if(!byTs[e.ts])added++;byTs[e.ts]=e;}});
+    const merged=Object.values(byTs).sort((a,b)=>a.ts.localeCompare(b.ts));
+    await store.set(merged);
+    toast('Imported '+added+' new · '+merged.length+' total');
+    renderEntries();refreshCount();
+  }catch(err){toast('Import failed: not a valid backup');}
+  ev.target.value='';
+}
 function copy(text){
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(()=>toast('Copied to clipboard'),()=>fallbackCopy(text));}
   else fallbackCopy(text);
@@ -480,6 +500,17 @@ function fallbackCopy(text){const t=document.createElement('textarea');t.value=t
 function download(name,data,type){const b=new Blob([data],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);toast('Exported '+name);}
 
 init();
+
+/* ---------- version + self-updating service worker ---------- */
+const APP_VERSION='v8';
+(function(){
+  const el=document.getElementById('verBadge');
+  if(el)el.textContent=APP_VERSION;
+})();
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('skin-picking-log-sw.js').catch(()=>{});});
+}
+
 </script>
 </body>
 </html>
