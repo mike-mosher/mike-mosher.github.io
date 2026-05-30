@@ -123,10 +123,10 @@
 <div class="toast" id="toast"></div>
 <div class="wrap">
   <header>
-    <h1>Pick<span class="leaf">·</span>Log</h1>
+    <h1>Pick<span class="leaf">·</span>Log <span id="verBadge" style="opacity:.5;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:400;"></span></h1>
     <span class="count" id="hdrCount"></span>
   </header>
-  <div class="sub">Log it the moment it happens. Profile builds itself. <span id="verBadge" style="opacity:.5;font-family:'IBM Plex Mono',monospace;font-size:11px;"></span></div>
+  <div class="sub">Log it the moment it happens. Profile builds itself.</div>
 
   <div class="tabbar">
     <button id="tabLogBtn" class="on" onclick="show('log')">Log</button>
@@ -502,7 +502,7 @@ function download(name,data,type){const b=new Blob([data],{type});const u=URL.cr
 init();
 
 /* ---------- version + self-updating service worker ---------- */
-const APP_VERSION='v8';
+const APP_VERSION='v9';
 (function(){
   const el=document.getElementById('verBadge');
   if(el)el.textContent=APP_VERSION;
