@@ -107,11 +107,12 @@
   .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;}
   .stat .n{font-family:'Fraunces',serif;font-size:26px;font-weight:600;}
   .stat .k{font-size:12px;color:var(--ink-dim);margin-top:2px;}
-  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:13px;}
-  .bar-row .name{width:78px;color:var(--ink-dim);flex-shrink:0;}
-  .bar-track{flex:1;height:18px;background:var(--bg2);border-radius:6px;overflow:hidden;}
-  .bar-fill{height:100%;background:var(--rust);border-radius:6px;}
-  .bar-row .v{font-family:'IBM Plex Mono',monospace;width:28px;text-align:right;color:var(--ink-dim);}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;}
+  .bar-row .name{width:128px;color:var(--ink-dim);flex-shrink:0;line-height:1.25;}
+  .bar-track{flex:1;height:20px;background:var(--bg2);border-radius:6px;overflow:hidden;display:block;}
+  .bar-fill{display:block;height:100%;background:linear-gradient(90deg,var(--rust-soft),var(--rust));border-radius:6px;min-width:3px;transition:width .35s ease;}
+  .bar-fill.zero{min-width:0;}
+  .bar-row .v{font-family:'IBM Plex Mono',monospace;width:24px;text-align:right;color:var(--ink);flex-shrink:0;}
   .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:9px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:50;}
   .toast.show{opacity:1;}
   .hint{font-size:12px;color:var(--ink-dim);margin-top:8px;line-height:1.5;}
@@ -201,8 +202,16 @@
   <div id="view-stat" class="hidden">
     <div class="stat-grid" id="statTop"></div>
     <div class="section">
-      <div class="lbl">Domain frequency <span class="dim">how often each shows up</span></div>
+      <div class="lbl">Domain frequency <span class="dim">% of episodes it appears in</span></div>
       <div id="domainBars"></div>
+    </div>
+    <div class="section">
+      <div class="lbl">By body zone <span class="dim">where you pick</span></div>
+      <div id="zoneBars"></div>
+    </div>
+    <div class="section">
+      <div class="lbl">By time of day</div>
+      <div id="timeBars"></div>
     </div>
     <div class="section">
       <div class="lbl">Top specific triggers</div>
@@ -252,7 +261,7 @@ const SCAMP={
   cognitive:['"Just this one"','Needs to be smooth','Helping it heal','"I\'ll feel better after"','Perfectionism','Permission ("I deserve it")','Have to finish it','Not thinking anything'],
   affective:['Bored','Anxious','Stressed','Frustrated','Tired','Restless','Content/relaxed','Angry','Overwhelmed','Depressed'],
   motor:['Examining skin','Hand resting near spot','Posture/position','Idle/restless hands'],
-  place:['Bathroom','Bed','Office desk','Car','Watching TV','Gaming','Work','Out/public']
+  place:['Bathroom','Bed','Office desk','Car','Watching TV','Gaming','On phone','Work','Out/public']
 };
 
 let sel={outcome:'picked',zone:null,zoneDetail:'',awareness:null,sensory:[],cognitive:[],affective:[],motor:[],place:[]};
@@ -393,27 +402,52 @@ async function del(ts){const all=(await store.get()).filter(e=>e.ts!==ts);await 
 async function renderStats(){
   const all=await store.get();
   const top=document.getElementById('statTop');
-  if(!all.length){top.innerHTML='<div class="empty" style="grid-column:1/3">No data yet.</div>';document.getElementById('domainBars').innerHTML='';document.getElementById('triggerBars').innerHTML='';return;}
+  const ids=['domainBars','zoneBars','timeBars','triggerBars'];
+  if(!all.length){top.innerHTML='<div class="empty" style="grid-column:1/3">No data yet.</div>';ids.forEach(i=>document.getElementById(i).innerHTML='');return;}
+  const n=all.length;
   const days=new Set(all.map(e=>e.ts.slice(0,10))).size;
-  const avgUrge=(all.reduce((s,e)=>s+e.urge,0)/all.length).toFixed(1);
+  const avgUrge=(all.reduce((s,e)=>s+e.urge,0)/n).toFixed(1);
   const auto=all.filter(e=>e.awareness==='automatic').length;
   const resisted=all.filter(e=>(e.outcome||'picked')!=='picked').length;
   top.innerHTML=
-    stat(all.length,'total logs')+stat((all.length/days).toFixed(1),'per day avg')+
-    stat(avgUrge,'avg urge')+stat(Math.round(100*auto/all.length)+'%','automatic')+
-    stat(Math.round(100*resisted/all.length)+'%','resisted/caught');
+    stat(n,'total logs')+stat((n/days).toFixed(1),'per day avg')+
+    stat(avgUrge,'avg urge')+stat(Math.round(100*auto/n)+'%','automatic')+
+    stat(Math.round(100*resisted/n)+'%','resisted/caught');
 
-  const domains={sensory:0,cognitive:0,affective:0,motor:0,place:0};
-  const triggers={};
-  all.forEach(e=>Object.keys(domains).forEach(d=>{(e[d]||[]).forEach(t=>{domains[d]++;triggers[t]=(triggers[t]||0)+1;});}));
-  const dmax=Math.max(1,...Object.values(domains));
-  document.getElementById('domainBars').innerHTML=Object.entries(domains).map(([k,v])=>bar(k,v,dmax)).join('');
+  // Domain frequency = % of episodes the domain appears in
+  const DOM=['sensory','cognitive','affective','motor','place'];
+  const domHits={},triggers={};
+  DOM.forEach(d=>domHits[d]=0);
+  all.forEach(e=>{
+    DOM.forEach(d=>{if((e[d]||[]).length){domHits[d]++;(e[d]||[]).forEach(t=>triggers[t]=(triggers[t]||0)+1);}});
+  });
+  document.getElementById('domainBars').innerHTML=DOM.map(d=>barPct(d,domHits[d],n)).join('');
+
+  // By body zone
+  const zones={};
+  all.forEach(e=>{const z=e.zone||'(none)';zones[z]=(zones[z]||0)+1;});
+  const zsorted=Object.entries(zones).sort((a,b)=>b[1]-a[1]);
+  const zmax=Math.max(1,...zsorted.map(z=>z[1]));
+  document.getElementById('zoneBars').innerHTML=zsorted.map(([k,v])=>bar(k,v,zmax)).join('');
+
+  // By time of day
+  const buckets={'Morning (5–11)':0,'Afternoon (12–16)':0,'Evening (17–21)':0,'Night (22–4)':0};
+  all.forEach(e=>{const h=new Date(e.ts).getHours();
+    if(h>=5&&h<12)buckets['Morning (5–11)']++;
+    else if(h>=12&&h<17)buckets['Afternoon (12–16)']++;
+    else if(h>=17&&h<22)buckets['Evening (17–21)']++;
+    else buckets['Night (22–4)']++;});
+  const bmax=Math.max(1,...Object.values(buckets));
+  document.getElementById('timeBars').innerHTML=Object.entries(buckets).map(([k,v])=>bar(k,v,bmax)).join('');
+
+  // Top specific triggers
   const tsorted=Object.entries(triggers).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const tmax=Math.max(1,...tsorted.map(t=>t[1]));
   document.getElementById('triggerBars').innerHTML=tsorted.length?tsorted.map(([k,v])=>bar(k,v,tmax)).join(''):'<div class="hint">No triggers tagged yet.</div>';
 }
 const stat=(n,k)=>'<div class="stat"><div class="n">'+n+'</div><div class="k">'+k+'</div></div>';
-const bar=(name,v,max)=>'<div class="bar-row"><span class="name">'+esc(name)+'</span><span class="bar-track"><span class="bar-fill" style="width:'+Math.round(100*v/max)+'%"></span></span><span class="v">'+v+'</span></div>';
+const bar=(name,v,max)=>'<div class="bar-row"><span class="name">'+esc(name)+'</span><span class="bar-track"><span class="bar-fill'+(v===0?' zero':'')+'" style="width:'+Math.round(100*v/max)+'%"></span></span><span class="v">'+v+'</span></div>';
+const barPct=(name,v,total)=>{const pct=Math.round(100*v/total);return '<div class="bar-row"><span class="name">'+esc(name)+'</span><span class="bar-track"><span class="bar-fill'+(v===0?' zero':'')+'" style="width:'+pct+'%"></span></span><span class="v">'+pct+'%</span></div>';};
 
 /* ---------- export ---------- */
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600);}
