@@ -66,6 +66,8 @@
 
   .zones{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
   .zones .chip{justify-self:stretch;text-align:center;}
+  .zone-detail{width:100%;margin-top:10px;background:var(--card);border:1px solid var(--rust);border-radius:11px;color:var(--ink);font-family:inherit;font-size:15px;padding:12px;}
+  .zone-detail::placeholder{color:#6f6757;}
 
   .awareness{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .awareness .chip{text-align:center;line-height:1.3;}
@@ -134,8 +136,14 @@
   <!-- LOG -->
   <div id="view-log">
     <div class="section">
+      <div class="lbl">Outcome</div>
+      <div class="awareness" id="outcome" style="grid-template-columns:1fr 1fr 1fr;"></div>
+    </div>
+
+    <div class="section">
       <div class="lbl">Body zone</div>
       <div class="zones" id="zones"></div>
+      <input type="text" id="zoneDetail" class="zone-detail hidden" placeholder="Which finger / which body part?">
     </div>
 
     <div class="section">
@@ -228,29 +236,44 @@ const store={
 };
 
 /* ---------- option sets (own wording, SCAMP / ComB framework) ---------- */
-const ZONES=['Face','Scalp','Arms','Hands/fingers','Legs','Back/shoulders','Chest','Feet','Other'];
+const ZONES=['Head (top)','Left arm','Left wrist','Left leg','Right leg','Left hand cuticle','Right hand cuticle','Other'];
+const ZONES_WITH_DETAIL=['Left hand cuticle','Right hand cuticle','Other'];
+const OUTCOME=[
+  {v:'picked',t:'Picked'},
+  {v:'partial',t:'Caught partway'},
+  {v:'resisted',t:'Resisted'}
+];
 const AWARENESS=[
   {v:'automatic',t:'Automatic',s:"didn't notice starting"},
   {v:'focused',t:'Focused',s:'deliberate, aware'}
 ];
 const SCAMP={
-  sensory:['Felt rough/bumpy','Saw a blemish','Itch','Scab present','Dry/flaky','Oily','Ingrown/hair','Tension under skin'],
-  cognitive:['"Just this one"','Needs to be smooth','"I\'ll feel better after"','Perfectionism','Permission ("I deserve it")','Not thinking anything'],
-  affective:['Bored','Anxious','Stressed','Frustrated','Tired','Restless','Content/relaxed','Angry','Overwhelmed'],
-  motor:['Hands idle','On phone','At computer','Watching TV','In thought','Touching face/skin','Grooming'],
-  place:['Bathroom','Bed','Desk','Car','Couch','At a mirror','Work','Out/public']
+  sensory:['Felt a scab/blemish (edge/rough)','Saw a scab/blemish','Felt the pain from a scab','The pull feels good','Smooth skin underneath'],
+  cognitive:['"Just this one"','Needs to be smooth','Helping it heal','"I\'ll feel better after"','Perfectionism','Permission ("I deserve it")','Have to finish it','Not thinking anything'],
+  affective:['Bored','Anxious','Stressed','Frustrated','Tired','Restless','Content/relaxed','Angry','Overwhelmed','Depressed'],
+  motor:['Examining skin','Hand resting near spot','Posture/position','Idle/restless hands'],
+  place:['Bathroom','Bed','Office desk','Car','Watching TV','Gaming','Work','Out/public']
 };
 
-let sel={zone:null,awareness:null,sensory:[],cognitive:[],affective:[],motor:[],place:[]};
+let sel={outcome:'picked',zone:null,zoneDetail:'',awareness:null,sensory:[],cognitive:[],affective:[],motor:[],place:[]};
 
 /* ---------- build UI ---------- */
 function buildChip(text,onTap){const b=document.createElement('button');b.className='chip';b.textContent=text;b.onclick=()=>onTap(b);return b;}
 
 function init(){
+  const oc=document.getElementById('outcome');
+  OUTCOME.forEach(o=>{
+    const b=document.createElement('button');b.className='chip';b.textContent=o.t;
+    if(sel.outcome===o.v)b.classList.add('on');
+    b.onclick=()=>{[...oc.children].forEach(c=>c.classList.remove('on'));sel.outcome=o.v;b.classList.add('on');updateSaveLabel();};
+    oc.appendChild(b);
+  });
+
   const z=document.getElementById('zones');
   ZONES.forEach(name=>z.appendChild(buildChip(name,b=>{
     [...z.children].forEach(c=>c.classList.remove('on'));
     if(sel.zone===name){sel.zone=null;}else{sel.zone=name;b.classList.add('on');}
+    updateZoneDetail();
   })));
 
   const aw=document.getElementById('awareness');
@@ -275,13 +298,35 @@ function init(){
     });
   });
   refreshCount();
+  updateSaveLabel();
+}
+
+function updateSaveLabel(){
+  const btn=document.getElementById('saveBtn');
+  if(btn.classList.contains('done'))return;
+  btn.textContent=sel.outcome==='resisted'?'Log resisted urge':sel.outcome==='partial'?'Log this':'Log this pick';
+}
+
+function updateZoneDetail(){
+  const inp=document.getElementById('zoneDetail');
+  const show=sel.zone&&ZONES_WITH_DETAIL.includes(sel.zone);
+  inp.classList.toggle('hidden',!show);
+  if(show){
+    inp.placeholder=sel.zone==='Other'?'Which body part?':'Which finger?';
+    inp.value=sel.zoneDetail||'';
+    inp.oninput=()=>{sel.zoneDetail=inp.value;};
+  }else{
+    sel.zoneDetail='';inp.value='';
+  }
 }
 
 /* ---------- save ---------- */
 async function saveEntry(){
   const e={
     ts:new Date().toISOString(),
+    outcome:sel.outcome,
     zone:sel.zone,
+    zoneDetail:sel.zoneDetail||'',
     urge:+document.getElementById('urge').value,
     awareness:sel.awareness,
     sensory:[...sel.sensory],cognitive:[...sel.cognitive],affective:[...sel.affective],
@@ -294,10 +339,14 @@ async function saveEntry(){
   resetForm();refreshCount();
 }
 function resetForm(){
-  sel={zone:null,awareness:null,sensory:[],cognitive:[],affective:[],motor:[],place:[]};
+  sel={outcome:'picked',zone:null,zoneDetail:'',awareness:null,sensory:[],cognitive:[],affective:[],motor:[],place:[]};
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  [...document.getElementById('outcome').children].forEach((c,i)=>{if(OUTCOME[i].v==='picked')c.classList.add('on');});
+  document.getElementById('zoneDetail').classList.add('hidden');
+  document.getElementById('zoneDetail').value='';
   document.getElementById('urge').value=5;document.getElementById('urgeVal').textContent='5';
   document.getElementById('note').value='';
+  updateSaveLabel();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 async function refreshCount(){
@@ -325,10 +374,14 @@ async function renderEntries(){
   if(!all.length){c.innerHTML='<div class="empty">No entries yet.</div>';return;}
   c.innerHTML=all.map(e=>{
     const tags=['sensory','cognitive','affective','motor','place'].flatMap(d=>e[d]||[]).map(t=>'<span class="tag">'+esc(t)+'</span>').join('');
+    const oc=e.outcome||'picked';
+    const ocLabel=oc==='resisted'?'✓ resisted':oc==='partial'?'~ caught partway':'● picked';
+    const ocColor=oc==='resisted'?'var(--green)':oc==='partial'?'var(--gold)':'var(--rust)';
     return '<div class="entry">'+
-      '<div class="top"><span class="when">'+fmtWhen(e.ts)+(e.zone?' · '+esc(e.zone):'')+(e.awareness?' · '+e.awareness:'')+'</span>'+
+      '<div class="top"><span class="when">'+fmtWhen(e.ts)+(e.zone?' · '+esc(e.zone)+(e.zoneDetail?' ('+esc(e.zoneDetail)+')':''):'')+(e.awareness?' · '+e.awareness:'')+'</span>'+
       '<span class="urge">urge '+e.urge+'</span></div>'+
       '<button class="del" onclick="del(\''+e.ts+'\')">×</button>'+
+      '<div style="font-size:12px;font-weight:600;color:'+ocColor+';margin-top:4px;">'+ocLabel+'</div>'+
       (tags?'<div class="meta">'+tags+'</div>':'')+
       (e.note?'<div class="note">'+esc(e.note)+'</div>':'')+
       '</div>';
@@ -344,9 +397,11 @@ async function renderStats(){
   const days=new Set(all.map(e=>e.ts.slice(0,10))).size;
   const avgUrge=(all.reduce((s,e)=>s+e.urge,0)/all.length).toFixed(1);
   const auto=all.filter(e=>e.awareness==='automatic').length;
+  const resisted=all.filter(e=>(e.outcome||'picked')!=='picked').length;
   top.innerHTML=
     stat(all.length,'total logs')+stat((all.length/days).toFixed(1),'per day avg')+
-    stat(avgUrge,'avg urge')+stat(Math.round(100*auto/all.length)+'%','automatic');
+    stat(avgUrge,'avg urge')+stat(Math.round(100*auto/all.length)+'%','automatic')+
+    stat(Math.round(100*resisted/all.length)+'%','resisted/caught');
 
   const domains={sensory:0,cognitive:0,affective:0,motor:0,place:0};
   const triggers={};
@@ -365,9 +420,9 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 async function copyForClaude(){
   const all=await store.get();
   if(!all.length){toast('No entries yet');return;}
-  let out="Skin-picking self-monitoring log (SCAMP / ComB framework). Each entry is one picking episode. Analyze for my trigger profile: which SCAMP domains dominate, which specific triggers and contexts recur, what co-occurs, and the difference between my automatic and focused episodes. End with the 3-4 highest-leverage intervention targets.\n\n";
+  let out="Skin-picking self-monitoring log (SCAMP / ComB framework). Each entry is one episode of an urge or pick. Outcome is picked / caught partway / resisted. Analyze for my trigger profile: which SCAMP domains dominate, which specific triggers and contexts recur, what co-occurs, the difference between my automatic and focused episodes, and what distinguishes the urges I resisted from the ones I picked. End with the 3-4 highest-leverage intervention targets.\n\n";
   all.forEach((e,i)=>{
-    out+=(i+1)+'. '+fmtWhen(e.ts)+' | zone: '+(e.zone||'-')+' | urge '+e.urge+'/10 | '+(e.awareness||'-')+'\n';
+    out+=(i+1)+'. '+fmtWhen(e.ts)+' | '+(e.outcome||'picked')+' | zone: '+(e.zone||'-')+(e.zoneDetail?' ('+e.zoneDetail+')':'')+' | urge '+e.urge+'/10 | '+(e.awareness||'-')+'\n';
     ['sensory','cognitive','affective','motor','place'].forEach(d=>{if((e[d]||[]).length)out+='   '+d+': '+e[d].join(', ')+'\n';});
     if(e.note)out+='   note: '+e.note+'\n';
   });
@@ -376,7 +431,7 @@ async function copyForClaude(){
 function exportCSV(){
   store.get().then(all=>{
     if(!all.length){toast('No entries yet');return;}
-    const cols=['ts','zone','urge','awareness','sensory','cognitive','affective','motor','place','note'];
+    const cols=['ts','outcome','zone','zoneDetail','urge','awareness','sensory','cognitive','affective','motor','place','note'];
     const esc=v=>{v=Array.isArray(v)?v.join('; '):(v==null?'':String(v));return '"'+v.replace(/"/g,'""')+'"';};
     const csv=[cols.join(',')].concat(all.map(e=>cols.map(c=>esc(e[c])).join(','))).join('\n');
     download('picklog-'+new Date().toISOString().slice(0,10)+'.csv',csv,'text/csv');
