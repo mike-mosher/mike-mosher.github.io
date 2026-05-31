@@ -2,7 +2,7 @@
 // On every launch (when online) it fetches the latest files from the
 // server and updates the cache, so the home-screen app self-updates.
 // Offline, it falls back to the last cached copy.
-const CACHE = 'picklog-v11';
+const CACHE = 'picklog-v12';
 
 self.addEventListener('install', e => {
   self.skipWaiting();

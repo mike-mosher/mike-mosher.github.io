@@ -264,7 +264,7 @@ const AWARENESS=[
 ];
 const SCAMP={
   sensory:['Felt a scab/blemish (edge/rough)','Saw a scab/blemish','Felt the pain from a scab','Itch','The pull feels good','Smooth skin underneath'],
-  cognitive:['"Just this one"','Needs to be smooth','Helping it heal','"I\'ll feel better after"','Perfectionism','Permission ("I deserve it")','Have to finish it','Not thinking anything'],
+  cognitive:['"Just this one"','Needs to be smooth','Helping it heal','"I\'ll feel better after"','Perfectionism','Permission ("I deserve it")','Have to finish it','The scab needed to be picked','Not thinking anything'],
   affective:['Bored','Anxious','Stressed','Frustrated','Tired','Restless','Content/relaxed','Angry','Overwhelmed','Depressed'],
   motor:['Examining skin','Hand resting near spot','Posture/position','Idle/restless hands'],
   place:['Bathroom','Bed','Office desk','Car','Watching TV','Gaming','On phone','Work','Out/public']
@@ -512,7 +512,7 @@ function download(name,data,type){const b=new Blob([data],{type});const u=URL.cr
 init();
 
 /* ---------- version + self-updating service worker ---------- */
-const APP_VERSION='v11';
+const APP_VERSION='v12';
 (function(){
   const el=document.getElementById('verBadge');
   if(el)el.textContent=APP_VERSION;
